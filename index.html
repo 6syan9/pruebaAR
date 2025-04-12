@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Three.js AR Hit Test</title>
+    <title>Three.js + WebXR AR</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
       body {
@@ -12,27 +12,12 @@
       canvas {
         display: block;
       }
-      #start-button {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #333;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        z-index: 10;
-      }
     </style>
   </head>
   <body>
-    <button id="start-button">Iniciar AR</button>
     <script type="module">
-      import * as THREE from "https://cdn.skypack.dev/three@0.150.1";
-      import { ARButton } from "https://cdn.skypack.dev/three@0.150.1/examples/jsm/webxr/ARButton.js";
+      import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js';
+      import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/webxr/ARButton.js';
 
       let camera, scene, renderer;
       let controller;
@@ -41,9 +26,8 @@
       let hitTestSourceRequested = false;
 
       init();
-      function init() {
-        const container = document.body;
 
+      function init() {
         scene = new THREE.Scene();
 
         camera = new THREE.PerspectiveCamera(
@@ -57,51 +41,48 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.xr.enabled = true;
-        container.appendChild(renderer.domElement);
+        document.body.appendChild(renderer.domElement);
+
+        // Agregamos el botón de AR
+        document.body.appendChild(
+          ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
+        );
 
         const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
         light.position.set(0.5, 1, 0.25);
         scene.add(light);
 
-        // Reticle para mostrar la superficie detectada
+        // Reticle
         reticle = new THREE.Mesh(
-          new THREE.RingGeometry(0.1, 0.15, 32).rotateX(-Math.PI / 2),
-          new THREE.MeshBasicMaterial({ color: 0x0fff00 })
+          new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2),
+          new THREE.MeshBasicMaterial({ color: 0x00ffff })
         );
         reticle.matrixAutoUpdate = false;
         reticle.visible = false;
         scene.add(reticle);
 
-        // Controlador para seleccionar
         controller = renderer.xr.getController(0);
-        controller.addEventListener("select", () => {
-          if (reticle.visible) {
-            const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-            const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.position.setFromMatrixPosition(reticle.matrix);
-            scene.add(mesh);
-          }
-        });
+        controller.addEventListener('select', onSelect);
         scene.add(controller);
 
-        document
-          .getElementById("start-button")
-          .addEventListener("click", () => {
-            document.body.removeChild(document.getElementById("start-button"));
-            document.body.appendChild(
-              ARButton.createButton(renderer, {
-                requiredFeatures: ["hit-test"],
-              })
-            );
-            renderer.setAnimationLoop(render);
-          });
+        window.addEventListener('resize', onWindowResize);
+        renderer.setAnimationLoop(render);
+      }
 
-        window.addEventListener("resize", () => {
-          camera.aspect = window.innerWidth / window.innerHeight;
-          camera.updateProjectionMatrix();
-          renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+      function onSelect() {
+        if (reticle.visible) {
+          const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+          const material = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.setFromMatrixPosition(reticle.matrix);
+          scene.add(mesh);
+        }
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
       function render(timestamp, frame) {
@@ -110,17 +91,17 @@
           const session = renderer.xr.getSession();
 
           if (!hitTestSourceRequested) {
-            session.requestReferenceSpace("viewer").then((refSpace) => {
-              session
-                .requestHitTestSource({ space: refSpace })
-                .then((source) => {
-                  hitTestSource = source;
-                });
+            session.requestReferenceSpace('viewer').then((refSpace) => {
+              session.requestHitTestSource({ space: refSpace }).then((source) => {
+                hitTestSource = source;
+              });
             });
-            session.addEventListener("end", () => {
+
+            session.addEventListener('end', () => {
               hitTestSourceRequested = false;
               hitTestSource = null;
             });
+
             hitTestSourceRequested = true;
           }
 
