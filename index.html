@@ -1,54 +1,64 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>MindAR sin marcador</title>
-    <script src="https://cdn.jsdelivr.net/npm/aframe@1.4.2/dist/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/aframe/mindar-face-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
     <style>
       body { margin: 0; overflow: hidden; }
+      canvas { position: absolute; top: 0; left: 0; }
       #startButton {
         position: absolute;
         top: 20px;
         left: 20px;
-        z-index: 999;
-        padding: 10px 20px;
-        background: #0c0;
+        padding: 12px 20px;
+        font-size: 16px;
+        background: #28a745;
         color: white;
-        font-weight: bold;
         border: none;
-        border-radius: 10px;
+        border-radius: 8px;
+        z-index: 1000;
       }
     </style>
   </head>
   <body>
     <button id="startButton">Iniciar AR</button>
-
-    <a-scene
-      mindar-face
-      embedded
-      color-space="sRGB"
-      renderer="colorManagement: true, physicallyCorrectLights"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
-    >
-      <!-- Cámara -->
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <!-- Modelo flotante (puedes usar cualquier .glb) -->
-      <a-entity
-        position="0 0 -1"
-        gltf-model="https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Duck/glTF/Duck.gltf"
-        scale="0.01 0.01 0.01"
-        rotation="0 180 0"
-      ></a-entity>
-    </a-scene>
-
     <script>
-      const startButton = document.getElementById('startButton');
-      startButton.addEventListener('click', () => {
-        document.querySelector('a-scene').components['mindar-face-system'].start();
-        startButton.style.display = 'none';
+      import('https://cdn.jsdelivr.net/npm/three@0.150.1/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
+
+        const start = async () => {
+          document.getElementById("startButton").style.display = "none";
+
+          const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+            container: document.body,
+            imageTargetSrc: "", // Sin marcador
+            filterMinCF: 0.001,
+            filterBeta: 1000
+          });
+
+          const { renderer, scene, camera } = mindarThree;
+
+          // Crear una luz
+          const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+          scene.add(light);
+
+          // Cargar un modelo 3D (GLTF)
+          const loader = new GLTFLoader();
+          loader.load("https://modelviewer.dev/shared-assets/models/Astronaut.glb", (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(0.5, 0.5, 0.5);
+            model.position.set(0, 0, -1); // Justo frente a la cámara
+            scene.add(model);
+          });
+
+          await mindarThree.start();
+          renderer.setAnimationLoop(() => {
+            renderer.render(scene, camera);
+          });
+        };
+
+        document.getElementById("startButton").addEventListener("click", start);
       });
     </script>
   </body>
